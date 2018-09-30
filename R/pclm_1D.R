@@ -81,7 +81,10 @@
 #' # Example 2 ----------------------
 #' # ungroup even in smaller intervals
 #' M2 <- pclm(x, y, nlast, out.step = 0.5)
-#' plot(M2)
+#' head(fitted(M1))
+#' plot(M1, type = "s")
+#' # Note, in example 1 we are estimating intervals of length 1. In example 2 
+#' # we are estimating intervals of length 0.5 using the same aggregate data.
 #' 
 #' # Example 3 ----------------------
 #' # Do not optimise smoothing parameters; choose your own. Faster.
@@ -114,7 +117,7 @@ pclm <- function(x, y, nlast, offset = NULL, out.step = 1, ci.level = 95,
   pclm.input.check(input, type)
   
   # Preliminary; start the clock
-  if (verbose) {pb = startpb(0, 100); on.exit(closepb(pb)); setpb(pb, 1)}
+  if (verbose) {pb <- startpb(0, 100); on.exit(closepb(pb)); setpb(pb, 1)}
   I[c("x", "y", "nlast", "offset")] <- create.artificial.bin(I) # ***
   
   # Deal with offset term
@@ -122,7 +125,7 @@ pclm <- function(x, y, nlast, offset = NULL, out.step = 1, ci.level = 95,
     if (length(offset) == length(y)) {
       if (verbose) { setpb(pb, 5); cat("   Ungrouping offset")}
       I$offset <- pclm(x = I$x, y = I$offset, I$nlast, offset = NULL, 
-                       out.step, ci.level, verbose = F, control)$fitted
+                       out.step, ci.level, verbose = FALSE, control)$fitted
     } 
   }
   
@@ -138,7 +141,7 @@ pclm <- function(x, y, nlast, offset = NULL, out.step = 1, ci.level = 95,
   R  <- delete.artificial.bin(R) # ***
   G  <- map.bins(x, nlast, out.step)
   dn <- G$output$names
-  names(R$fit) = names(R$lower) = names(R$upper) = names(R$SE) <- dn
+  names(R$fit) <- names(R$lower) <- names(R$upper) <- names(R$SE) <- dn
   
   # Output
   Fcall <- match.call()
@@ -167,7 +170,7 @@ pclm <- function(x, y, nlast, offset = NULL, out.step = 1, ci.level = 95,
 #' @export
 residuals.pclm <- function(object, ...) {
   if (!is.null(object$input$offset)) {
-    stop("residuals method not implemented for hazard rates", call. = F)
+    stop("residuals method not implemented for hazard rates", call. = FALSE)
   }
   C <- object$deep$C
   C <- C[-nrow(C), -ncol(C)]
@@ -194,6 +197,7 @@ print.pclm <- function(x, ...){
   cat("\n")
 }
 
+
 #' Summary for pclm method
 #' @inheritParams base::summary
 #' @keywords internal
@@ -209,6 +213,7 @@ summary.pclm <- function(object, ...) {
   out <- structure(class = "summary.pclm", as.list(environment()))
   return(out)
 }
+
 
 #' Print for summary.pclm method
 #' @param x An object of class \code{"summary.pclm"}

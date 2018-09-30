@@ -1,12 +1,14 @@
 # <img src="inst/figures/ungroup_logo.png" align="right" width="150" height="150" /> Penalized Composite Link Model for Efficient Estimation of Smooth Distributions from Coarsely Binned Data 
-
-[![lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
-[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/mpascariu/ungroup?branch=master&svg=true)](https://ci.appveyor.com/project/mpascariu/ungroup)
+[![CRAN_Version](https://www.r-pkg.org/badges/version/ungroup)](https://cran.r-project.org/package=ungroup)
 [![Linux Build Status](https://travis-ci.org/mpascariu/ungroup.svg?branch=master)](https://travis-ci.org/mpascariu/ungroup)
 [![codecov](https://codecov.io/github/mpascariu/ungroup/branch/master/graphs/badge.svg)](https://codecov.io/github/mpascariu/ungroup)
 [![issues](https://img.shields.io/github/issues-raw/mpascariu/ungroup.svg)](https://github.com/mpascariu/ungroup/issues)
-[![license](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://github.com/mpascariu/ungroup/blob/master/LICENSE)
+[![DOI](http://joss.theoj.org/papers/10.21105/joss.00937/status.svg)](https://doi.org/10.21105/joss.00937)
 
+[![lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
+[![license](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://github.com/mpascariu/ungroup/blob/master/LICENSE)
+[![CRAN_Download_Badge1](https://cranlogs.r-pkg.org/badges/grand-total/ungroup)](https://CRAN.R-project.org/package=ungroup)
+[![CRAN_Download_Badge2](https://cranlogs.r-pkg.org/badges/ungroup)](https://CRAN.R-project.org/package=ungroup)
 
 This repository contains a versatile method for ungrouping histograms (binned count data) assuming that counts are Poisson distributed and that the underlying sequence on a fine grid to be estimated is smooth. The method is based on the composite link model and estimation is achieved by maximizing a penalized likelihood. Smooth detailed sequences of counts and rates are so estimated from the binned counts. Ungrouping binned data can be desirable for many reasons: Bins can be too coarse to allow for accurate analysis; comparisons can be hindered when different grouping approaches are used in different histograms; and the last interval is often wide and open-ended and, thus, covers a lot of information in the tail area. Age-at-death distributions grouped in age classes and abridged life tables are examples of binned data. Because of modest assumptions, the approach is suitable for many demographic and epidemiological applications. For a detailed description of the method and applications see Rizzi et al. (2015).
 
@@ -35,6 +37,18 @@ You can track (and contribute to) the development of `ungroup` at https://github
    ```R
    devtools::install_github("mpascariu/ungroup")
    ```
+
+## Intro
+Get started with `ungroup` by checking the [vignette](https://github.com/mpascariu/ungroup/blob/master/inst/doc/Intro.pdf) 
+ ```R
+ browseVignettes(package = "ungroup") 
+ ```
+
+## Contributing
+This software is an academic project. We welcome any issues and pull requests.
+* If `ungroup` is malfunctioning, please report the case by submitting an issue on GitHub.
+* If you wish to contribute, please submit a pull request following the guidelines in [CONTRIBUTING.md](https://github.com/mpascariu/ungroup/blob/master/CONTRIBUTING.md).
+
 
 ## References
 [Rizzi S](http://findresearcher.sdu.dk:8080/portal/en/person/srizzi), [Gampe J](http://www.demogr.mpg.de/en/institute/staff_directory_1899/jutta_gampe_655.htm) and Eilers PHC. 2015. [Efficient Estimation of Smooth Distributions From Coarsely Grouped Data.](https://doi.org/10.1093/aje/kwv020) American Journal of Epidemiology, Volume 182, Issue 2, Pages 138-147.
