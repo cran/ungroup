@@ -1,3 +1,8 @@
+# --------------------------------------------------- #
+# Author: Marius D. Pascariu
+# License: MIT
+# Last update: Wed Dec 04 19:17:56 2019
+# --------------------------------------------------- #
 
 #' Fit PCLM Models
 #' 
@@ -8,8 +13,20 @@
 #' @param type Type of PCLM model. Options: \code{"1D", "2D"} for 
 #' univariate and two-dimensional model respectively.
 #' @keywords internal
-pclm.fit <- function(x, y, nlast, offset, out.step, verbose,
-                     lambda, kr, deg, diff, max.iter, tol, type){
+#' @export
+pclm.fit <- function(x, 
+                     y, 
+                     nlast, 
+                     offset, 
+                     out.step, 
+                     verbose,
+                     lambda, 
+                     kr, 
+                     deg, 
+                     diff, 
+                     max.iter, 
+                     tol, 
+                     type){
   
   if (verbose) { # Setup progress bar
     pb = startpb(0, 100)
@@ -43,6 +60,7 @@ pclm.fit <- function(x, y, nlast, offset, out.step, verbose,
 #' Build Composition Matrices
 #' @inheritParams pclm.fit
 #' @keywords internal
+#' @export
 build_C_matrix <- function(x, y, nlast, offset, out.step, type) {
   # Build C matrix in the age direction
   nx <- length(x)
@@ -50,6 +68,7 @@ build_C_matrix <- function(x, y, nlast, offset, out.step, type) {
   gu <- c(diff(x), nlast)/out.step
   CA <- matrix(0, nrow = nx, ncol = sum(gu), dimnames = list(x, gx))
   xr <- c(x[-1], max(x) + nlast)
+  
   for (j in 1:nx) CA[j, which(gx >= x[j] & gx < xr[j])] <- 1
   
   # Build C matrix in the year direction
@@ -57,6 +76,7 @@ build_C_matrix <- function(x, y, nlast, offset, out.step, type) {
     ny <- length(y)
     CY <- NULL
     C  <- CA
+    
   } else {
     ny <- ncol(y)
     CY <- diag(1, ncol = ny, nrow = ny) 
@@ -79,6 +99,7 @@ build_C_matrix <- function(x, y, nlast, offset, out.step, type) {
 #' @inheritParams pclm.fit
 #' @seealso \code{\link{MortSmooth_bbase}}
 #' @keywords internal
+#' @export
 build_B_spline_basis <- function(X, Y, kr, deg, diff, type) {
   # B-spline basis 
   bsb <- function(Z, kr, deg, diff) {
@@ -107,10 +128,12 @@ build_B_spline_basis <- function(X, Y, kr, deg, diff, type) {
 #' @param BY B-spline basis object for year axis
 #' @inheritParams pclm.fit
 #' @keywords internal
+#' @export
 build_P_matrix <- function(BA, BY, lambda, type){
   L  <- sqrt(lambda)
   if (type == "1D") {
     P <- L * BA$tD
+    
   } else {
     Px <- BY$dg %x% BA$tD
     Py <- BY$tD %x% BA$dg
@@ -124,8 +147,10 @@ build_P_matrix <- function(BA, BY, lambda, type){
 #' Improves convergence.
 #' @param i A list of input values corresponding to pclm or pclm2D;
 #' @param vy Numerical value of the bin created for \code{y} input;
-#' @param vo Numerical values of the bin created for \code{offset} input (if the case).
+#' @param vo Numerical values of the bin created for \code{offset} input 
+#' (if the case).
 #' @keywords internal
+#' @export
 create.artificial.bin <- function(i, vy = 1, vo = 1.01){
   with(i, {
     x     <- c(x, max(x) + nlast)
@@ -142,6 +167,7 @@ create.artificial.bin <- function(i, vy = 1, vo = 1.01){
 #' Delete from results the last group added artificially in pclm and pclm2D 
 #' @param M A pclm.fit object
 #' @keywords internal
+#' @export
 delete.artificial.bin <- function(M){
   n <- 1
   N <- 1:n
@@ -154,11 +180,13 @@ delete.artificial.bin <- function(M){
   f2 <- function(x) { # method 2 - delete groups
     rev(rev(x)[-N])
   }
-  L <- class(M$fit) == "numeric"
-  M$fit   <- with(M, if (L) f1(fit)   else apply(fit, 2, FUN = f1))
+  # L <- class(M$fit) == "numeric"
+  L <- !is.matrix(M$fit)
+  
+  M$fit   <- with(M, if (L) f1(fit)   else apply(fit,   2, FUN = f1))
   M$lower <- with(M, if (L) f1(lower) else apply(lower, 2, FUN = f1))
   M$upper <- with(M, if (L) f1(upper) else apply(upper, 2, FUN = f1))
-  M$SE    <- with(M, if (L) f1(SE)  else apply(SE, 2, FUN = f2))
+  M$SE    <- with(M, if (L) f1(SE)    else apply(SE,    2, FUN = f2))
   return(M)
 }
 
@@ -180,10 +208,10 @@ map.bins <- function(x, nlast, out.step) {
   dnames <- list(c("left", "right"), rep("", N))
   breaks <- matrix(c(bl, br), nrow = 2, byrow = T, dimnames = dnames)
   loc    <- matrix(c(xl, xr), nrow = 2, byrow = T, dimnames = dnames)
-  input  <- list(n = N, 
-                 length = xr - xl + 1, 
-                 names  = paste0("[", bl,",", br, ")"), 
-                 breaks = breaks, 
+  input  <- list(n        = N, 
+                 length   = xr - xl + 1, 
+                 names    = paste0("[", bl,",", br, ")"), 
+                 breaks   = breaks, 
                  location = loc)
   output <- NULL
   if (!is.null(out.step)) {
