@@ -1,7 +1,7 @@
 # --------------------------------------------------- #
 # Author: Marius D. Pascariu
 # License: MIT
-# Last update: Thu Nov 07 11:33:27 2019
+# Last update: Fri Jan 08 09:48:33 2021
 # --------------------------------------------------- #
 
 #' @details 
@@ -12,11 +12,11 @@
 #' @importFrom Rcpp sourceCpp
 #' @importFrom stats optimise qnorm quantile fitted aggregate nlminb AIC BIC
 #' @importFrom utils tail
-#' @importFrom MortalitySmooth MortSmooth_bbase
-#' @importFrom graphics axis barplot legend lines plot abline par
+#' @importFrom graphics axis barplot legend lines abline par plot.default
 #' @importFrom rgl axes3d box3d open3d surface3d title3d
 #' @importFrom pbapply startpb setpb closepb
 #' @import Rdpack
+#' @importClassesFrom Matrix dgCMatrix
 #' @name ungroup
 #' @useDynLib ungroup
 #' @aliases NULL
