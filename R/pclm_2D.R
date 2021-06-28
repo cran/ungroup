@@ -1,9 +1,7 @@
 # --------------------------------------------------- #
-# Author: Marius D. Pascariu
-# License: MIT
-# Last update: Sun Aug 11 21:04:11 2019
+# Author: Marius D. PASCARIU
+# Last update: Mon Jun 28 17:53:08 2021
 # --------------------------------------------------- #
-
 
 #' Two-Dimensional Penalized Composite Link Model (PCLM-2D)
 #' 
@@ -29,24 +27,29 @@
 #' Dx <- ungroup.data$Dx
 #' Ex <- ungroup.data$Ex
 #' 
-#' # Aggregate data to ungroup it in the examples below
+#' # Aggregate data to be ungrouped in the examples below
+#' # Select a 10y data frame
 #' x      <- c(0, 1, seq(5, 85, by = 5))
 #' nlast  <- 26
 #' n      <- c(diff(x), nlast)
 #' group  <- rep(x, n)
-#' y      <- aggregate(Dx, by = list(group), FUN = "sum")[, -1]
-#' offset <- aggregate(Ex, by = list(group), FUN = "sum")[, -1]
+#' y      <- aggregate(Dx, by = list(group), FUN = "sum")[, 2:10]
+#' offset <- aggregate(Ex, by = list(group), FUN = "sum")[, 2:10]
 #' 
 #' # Example 1 ---------------------- 
 #' # Fit model and ungroup data using PCLM-2D
 #' P1 <- pclm2D(x, y, nlast)
 #' summary(P1)
-#' # plot(P1)
 #' 
-#' \dontrun{
+#' # Plot fitted values
+#' plot(P1)
+#' 
+#' # Plot input data
+#' plot(P1, "observed")
+#' 
 #' # NOTE: pclm2D does not search for optimal smoothing parameters by default
-#' # (like pclm) because it is more time consuming. If optimization is required
-#' # set lambda = c(NA, NA):
+#' # (like pclm does) because it is more time consuming. If optimization is 
+#' # required set lambda = c(NA, NA):
 #' 
 #' P1 <- pclm2D(x, y, nlast, control = list(lambda = c(NA, NA)))
 #' 
@@ -55,11 +58,9 @@
 #' P2 <- pclm2D(x, y, nlast, offset)
 #' summary(P2)
 #' 
-#' plot(P2)                      # plot
-#' library(rgl)
-#' snapshot3d("plotP2.jpeg")     # save the plot in jpeg format
-#' aspect3d(x = 1, y = 2, z = 1) # modify the aspect ratio
-#' }
+#' plot(P2, type = "observed")
+#' plot(P2, type = "fitted")
+#' plot(P2, type = "fitted", colors = c("blue", "red"))
 #' @export
 pclm2D <- function(x, 
                    y, 
