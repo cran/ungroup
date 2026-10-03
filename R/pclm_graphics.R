@@ -1,24 +1,30 @@
 # --------------------------------------------------- #
 # Author: Marius D. PASCARIU
-# Last update: Wed Jun 23 16:38:17 2021
+# Last update: Fri Oct 02 21:34:06 2026
 # --------------------------------------------------- #
 
 #' Generic Plot for pclm Class
 #' 
 #' @inheritParams graphics::plot.default
-#' @inheritParams graphics::legend
+#' @param legend Labels for the legend. With three colors the default is
+#' \code{c("Input values", "Fitted values", "Conf. intervals")}.
 #' @param x An object of class \code{\link{pclm}}
 #' @param lwd Line width, a positive number, defaulting to 2. 
-#' @param col Three colours to be used in the plot for observed values, 
-#' fitted values and confidence intervals.
+#' @param col Three colors to be used in the plot for observed values, 
+#' fitted values and confidence intervals, in that order. The histogram
+#' default is \code{c("gold2", 2, 4)}; with an offset, which puts the plot on
+#' a log scale, it is \code{c(1, 2, 4)}.
 #' @param legend.position Legend position, or the x and y co-ordinates to be 
-#' used to position the legend. 
+#' used to position the legend. The default is chosen from the data: if the
+#' first few bins are taller than the last few the legend goes top right, and
+#' top left otherwise, which keeps it off the peak. The rate plot always
+#' defaults to top left.
 #' @param type 1-character string giving the type of plot desired. 
 #' The following values are possible, for details, see plot: "p" for points, 
 #' "l" for lines, "b" for both points and lines, "c" for empty points joined 
 #' by lines, "o" for overplotted points and lines, "s" and "S" for stair 
 #' steps and "h" for histogram-like vertical lines. Finally, "n" does not 
-#' produce any points or lines.
+#' produce any points or lines. Default: \code{"l"}.
 #' @param ... other graphical parameters (see \link{par} for more details).
 #' @seealso \code{\link{pclm}}
 #' @examples 
@@ -109,10 +115,12 @@ plot.pclm <- function(x,
 #' 
 #' @param x an object of class \code{\link{pclm2D}}.
 #' @param nbcol dimension of the color palette. Number of colors. Default: 25.
+#' @param colors Colors to interpolate for the surface palette; must be a valid
+#' argument to \code{\link[grDevices]{colorRampPalette}}. Default:
+#' \code{c("#b6e3db", "#e5d9c2", "#b5ba61", "#725428")}.
 #' @param type chart type. Defines which data are plotted, \code{"fitted"} 
 #' values or \code{"observed"} input data. Default: \code{"fitted"}.
 #' @inheritParams graphics::persp
-#' @inheritParams grDevices::colorRampPalette
 #' @param ... any other argument to be passed to 
 #' \code{\link[graphics]{persp}}.
 #' @seealso \code{\link{pclm2D}}
@@ -132,11 +140,9 @@ plot.pclm2D <- function(x,
                         ticktype = "simple",
                         ...) {
   
-  type   <- match.arg(type)
-  object <- x
-  Ex     <- x$input$offset
-  ok     <- TRUE
-  vsn    <- 0.000000001 # very small number
+  type <- match.arg(type)
+  Ex   <- x$input$offset
+  vsn  <- 0.000000001 # very small number
   
   if (type == "fitted") {
     out.step <- x$input$out.step
@@ -146,7 +152,7 @@ plot.pclm2D <- function(x,
     Z   <- if (is.null(Ex)) sweep(Z, 1, len, FUN = "/") else log(Z)
     X   <- seq_len(nrow(Z)) * out.step
     Y   <- seq_len(ncol(Z))
-  } 
+  }
   
   if (type == "observed") {
     
@@ -154,6 +160,16 @@ plot.pclm2D <- function(x,
     loc  <- x$bin.definition$input$location
     y    <- x$input$y
     n    <- ncol(y)
+    # The observed surface is the input counts, optionally as rates. A rate is
+    # y over the offset, and the two must share the input bins. An offset given
+    # on the fine output grid, which is what an ungrouped exposure passed as
+    # pclm2D(..., offset = ungrouped_Ex) leaves in input$offset, is summed back
+    # into the input bins here. pclm2D stores the offset on one of the two
+    # grids only, so no other shape reaches this point.
+    if (!is.null(Ex) && !identical(dim(Ex), dim(y))) {
+      grp <- findInterval(x$bin.definition$output$location[1, ], loc[1, ])
+      Ex  <- rowsum(as.matrix(Ex), group = grp)
+    }
     Z    <- if (is.null(Ex)) y else y/Ex
     Z    <- as.data.frame(Z)
     Z$ID <- seq_len(nrow(Z))
@@ -164,46 +180,28 @@ plot.pclm2D <- function(x,
     Z    <- if (is.null(Ex)) sweep(Z, 1, len, FUN = "/") else log(Z)
     X    <- sort(c(loc[1,], loc[2,] + vsn))
     Y    <- 1:n
-  } 
-  
-  # Check point
-  if (!is.null(Ex)) {
-    ok <- all(dim(Y) != dim(Ex))
-    
-    if (!ok) {
-      warning("Observed surface cannot be plotted because `y` and `offset`", 
-              "have different dimensions.")
-    }
   }
   
-  # if all ok plot!
-  if(ok) {
-    
-    # Figure out colors.
-    # Compute the z-value at the facet centres
-    ncz <- ncol(Z)
-    nrz <- nrow(Z)
-    zfacet   <- Z[-1, -1] + Z[-1, -ncz] + Z[-nrz, -1] + Z[-nrz, -ncz]
-    # Recode facet z-values into color indices
-    colpal   <- colorRampPalette(colors)(nbcol)
-    facetcol <- cut(zfacet, nbcol)
-    
-    # Perspective Plot
-    persp(X, Y, Z, 
-          col = colpal[facetcol], 
-          phi = phi, 
-          theta = theta,
-          xlab = xlab,
-          ylab = ylab,
-          zlab = zlab,
-          border = border,
-          ticktype = ticktype,
-          ...)
-    
-  } else {
-    return(NULL)
-    
-  }
+  # Figure out colors.
+  # Compute the z-value at the facet centres
+  ncz <- ncol(Z)
+  nrz <- nrow(Z)
+  zfacet   <- Z[-1, -1] + Z[-1, -ncz] + Z[-nrz, -1] + Z[-nrz, -ncz]
+  # Recode facet z-values into color indices
+  colpal   <- colorRampPalette(colors)(nbcol)
+  facetcol <- cut(zfacet, nbcol)
+  
+  # Perspective Plot
+  persp(X, Y, Z, 
+        col = colpal[facetcol], 
+        phi = phi, 
+        theta = theta,
+        xlab = xlab,
+        ylab = ylab,
+        zlab = zlab,
+        border = border,
+        ticktype = ticktype,
+        ...)
 }
 
 

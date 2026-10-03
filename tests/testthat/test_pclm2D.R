@@ -1,6 +1,5 @@
 # --------------------------------------------------- #
 # Author: Marius D. PASCARIU
-# Last update: Wed Jun 23 22:12:24 2021
 # --------------------------------------------------- #
 remove(list = ls())
 library(testthat)
@@ -9,13 +8,15 @@ library(ungroup)
 
 test_pclm_2D <- function(M) {
   fv    <- fitted(M)
-  lower <- M$ci[[1]]
-  upper <- M$ci[[2]]
+  lower <- M$ci$lower
+  upper <- M$ci$upper
   test_that("PCLM-2D", {
     expect_s3_class(M, "pclm2D")
     expect_output(print(M))
     expect_output(print(summary(M)))
     expect_false(is.null(plot(M)))
+    # The observed surface works whatever resolution the offset was given on.
+    expect_false(is.null(plot(M, type = "observed")))
     expect_true(all(fv >= 0))
     expect_identical(dim(fv), dim(lower))
     expect_identical(dim(upper), dim(lower))
@@ -62,6 +63,137 @@ test_that("Residuals", {
 
 # ----------------------------------------------
 # Test error messages
-expect_error(pclm2D(c(x, 90), y2, nlast))
-expect_error(pclm2D(x, y, nlast))
-expect_error(pclm2D(x, y2, nlast, rbind(offset, 0)))
+test_that("pclm2D rejects malformed input", {
+  # x is one bin longer than the rows of y.
+  expect_error(pclm2D(c(x, 90), y2, nlast), "nrow")
+  # A plain vector is not a valid 2D response.
+  expect_error(pclm2D(x, y2[, 1], nlast), "must be a data.frame or a matrix")
+  # An offset with a row too many cannot be composed with y.
+  expect_error(pclm2D(x, y2, nlast, rbind(offset2, 0)), "non-conformable")
+  # The 2D model has two smoothing parameters. A scalar left the second
+  # penalty unpenalised and returned an all-NaN fit with no warning.
+  expect_error(
+    pclm2D(x, y2, nlast, verbose = FALSE, control = list(lambda = 5)),
+    "must have length"
+  )
+})
+
+test_that("A partially specified lambda is optimised, not rejected", {
+  # NA marks a lambda to be found by optimisation. This documented path used
+  # to abort with "missing value where TRUE/FALSE needed" before any fitting.
+  P <- suppressWarnings(
+    pclm2D(x, y2, nlast,
+           verbose  = FALSE,
+           control  = list(lambda = c(5, NA), max.iter = 200))
+  )
+  expect_s3_class(P, "pclm2D")
+})
+
+test_that("Information criteria honour k in the 2D model", {
+  tr <- P1$deep$trace
+  expect_equal(AIC(P1, k = 4), AIC(P1, k = 2) + 2 * tr, tolerance = 1e-10)
+  expect_error(BIC(P1, k = 7), "no extra arguments")
+  expect_equal(BIC(P1), P1$deep$dev + log(P1$deep$ny_) * tr, tolerance = 1e-10)
+})
+
+test_that("Integer counts are accepted", {
+  # aggregate() can hand back integers and the mapped vector refused them.
+  y2i <- y2
+  y2i[] <- lapply(y2i, as.integer)
+  P <- suppressWarnings(
+    pclm2D(x, y2i, 26, verbose = FALSE,
+           control = list(lambda = c(1, 1), max.iter = 200))
+  )
+  expect_s3_class(P, "pclm2D")
+  expect_true(all(is.finite(fitted(P))))
+})
+
+test_that("A missing year is interpolated, not fatal", {
+  # This is the shape of both open data issues: a rectangular surface with
+  # whole columns or interior cells unobserved.
+  y3 <- y2
+  y3[, 3] <- NA
+
+  expect_error(pclm2D(x, y3, nlast, verbose = FALSE), "contains NA values")
+
+  P <- suppressWarnings(
+    pclm2D(x, y3, nlast,
+           verbose   = FALSE,
+           control   = list(lambda = c(1, 1), max.iter = 200),
+           na.action = "omit")
+  )
+  expect_s3_class(P, "pclm2D")
+  expect_true(all(is.finite(fitted(P))))
+  # One column per input year survives, gaps included.
+  expect_identical(ncol(fitted(P)), ncol(y3))
+})
+
+test_that("Missing cells work with an offset too", {
+  # The Bangladesh case: exposures and deaths both unobserved at high ages in
+  # the early years. The offset is ungrouped first, so it has to travel the
+  # same omission path as the counts.
+  y4  <- y2
+  e4  <- offset2
+  y4[1:3, 1:4] <- NA
+  e4[1:3, 1:4] <- NA
+
+  P <- suppressWarnings(
+    pclm2D(x, y4, nlast, e4,
+           verbose   = FALSE,
+           control   = list(lambda = c(1, 1), max.iter = 200),
+           na.action = "omit")
+  )
+  expect_s3_class(P, "pclm2D")
+  expect_true(all(is.finite(fitted(P))))
+})
+
+test_that("kr larger than the year axis is refused, not crashed", {
+  # The default kr = 7 needs at least 7 years. Fewer used to die inside
+  # MortSmooth_bbase with "'from' must be a finite number", which names
+  # nothing. This is reachable with the documented defaults, so it is pinned.
+  short <- y2[, 1:5]
+
+  expect_error(
+    pclm2D(x, short, nlast, verbose = FALSE,
+           control = list(lambda = c(1, 1))),
+    "'kr' = 7 is too large"
+  )
+  # The fine age grid is long, so kr bites on the short year axis first.
+  expect_error(
+    pclm2D(x, short, nlast, verbose = FALSE,
+           control = list(lambda = c(1, 1), kr = 20)),
+    "too large for the year axis"
+  )
+
+  # kr = 5 is the largest that works on a 5-year panel, and it must succeed.
+  P <- suppressWarnings(
+    pclm2D(x, short, nlast, verbose = FALSE,
+           control = list(lambda = c(1, 1), kr = 5))
+  )
+  expect_s3_class(P, "pclm2D")
+  expect_identical(dim(fitted(P)), c(111L, 5L))
+})
+
+test_that("the observed surface plots whatever grid the offset was given on", {
+  # The offset reaches input$offset on one of two grids: the input bins when it
+  # was passed grouped, the fine output grid when it was ungrouped first. Both
+  # must draw. The fine case used to reach the y/Ex division unchanged, where a
+  # 111-row offset against a 19-row y aborted in Ops.data.frame.
+  P_gr <- suppressWarnings(
+    pclm2D(x, y2, nlast, offset2, verbose = FALSE,
+           control = list(lambda = c(1, 1), max.iter = 200))
+  )
+  expect_false(is.null(plot(P_gr, type = "observed")))
+
+  # An ungrouped offset is what P4 in this file carries.
+  un_Ex <- suppressWarnings(
+    pclm2D(x, y = offset2, nlast, offset = NULL, verbose = FALSE,
+           control = list(lambda = c(1, 1), max.iter = 200))
+  )$fitted
+  P_un <- suppressWarnings(
+    pclm2D(x, y2, nlast, offset = un_Ex, verbose = FALSE,
+           control = list(lambda = c(1, 1), max.iter = 200))
+  )
+  expect_identical(nrow(P_un$input$offset), 111L)
+  expect_false(is.null(plot(P_un, type = "observed")))
+})

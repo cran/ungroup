@@ -7,12 +7,14 @@
 pclm(
   x,
   y,
-  nlast,
+  nlast = NULL,
   offset = NULL,
   out.step = 1,
   ci.level = 95,
   verbose = FALSE,
-  control = list()
+  control = list(),
+  omega = NULL,
+  na.action = c("fail", "omit")
 )
 }
 \arguments{
@@ -27,47 +29,69 @@ as \code{x}.}
 would be 5.}
 
 \item{offset}{Optional offset term to calculate smooth mortality rates. 
-A vector of the same length as x and y. See 
-\insertCite{rizzi2015;textual}{ungroup} for further details.}
+A vector of the same length as x and y, or one of the same length as the
+ungrouped output. See \insertCite{rizzi2015;textual}{ungroup} for further 
+details.}
 
 \item{out.step}{Length of estimated intervals in output. 
 Values between 0.1 and 1 are accepted. Default: 1.}
 
-\item{ci.level}{Level of significance for computing confidence intervals. 
-Default: \code{95}.}
+\item{ci.level}{Confidence level, as a percentage rather than a proportion,
+so \code{95} and not \code{0.95}. Values in \code{[50.1, 99.9]} are
+accepted. It sets the width of both interval pairs in \code{ci}: the
+pointwise \code{conf_lower} and \code{conf_upper}, and the mass-preserving
+\code{lower} and \code{upper} scenarios. Default: \code{95}.}
 
 \item{verbose}{Logical value. Indicates whether a progress bar should be 
 shown or not.
 Default: \code{FALSE}.}
 
-\item{control}{List with additional parameters: \itemize{
-\item{\code{lambda}} -- Smoothing parameter to be used in pclm estimation.
-If \code{lambda = NA} an algorithm will find the optimal values.
-\item{kr} -- Knot ratio. Number of internal intervals used for defining 
-1 knot in B-spline basis construction. See \code{\link{MortSmooth_bbase}}.
-\item{\code{deg}} -- Degree of the splines needed to create equally-spaced 
-B-splines basis over an abscissa of data.
-\item{\code{int.lambda}} -- If \code{lambda} is optimized an interval to be 
-searched needs to be specified. Format: vector containing the end-points.
-\item{\code{diff}} -- An integer indicating the order of differences of the 
-components of PCLM coefficients.
-\item{\code{opt.method}} -- Selection criterion of the model.
-Possible values are \code{"AIC"} and \code{"BIC"}.
-\item{\code{max.iter}} -- Maximal number of iterations used in fitting 
-procedure.
-\item{\code{tol}} -- Relative tolerance in PCLM fitting procedure.}}
+\item{control}{List of fitting controls, given by name. A misspelled entry
+is an error rather than being silently ignored. An unnamed entry is matched
+positionally, so \code{list(100)} sets \code{lambda} and nothing else;
+naming every entry is strongly preferred. Any setting not supplied takes
+its default from \code{\link{control.pclm}} for this function, or
+\code{\link{control.pclm2D}} for \code{pclm2D}. See those pages for the
+meaning and default of each of \code{lambda}, \code{kr}, \code{deg},
+\code{int.lambda}, \code{diff}, \code{opt.method}, \code{max.iter} and
+\code{tol}.}
+
+\item{omega}{Closing age of the distribution. An alternative to
+\code{nlast}: when it is given, the width of the last interval is taken as
+\code{omega - max(x)}. Give one of the two, not both.}
+
+\item{na.action}{What to do with unobserved cells in \code{y}.
+\code{"fail"}, the default, rejects them. \code{"omit"} drops the matching
+rows and lets the smoothing penalty bridge the gap, which is how a surface
+with interior gaps or a missing year is handled. Only \code{NA} counts as
+unobserved; infinite values are always an error.}
 }
 \value{
 The output is a list with the following components:
  \item{input}{ A list with arguments provided in input. Saved for 
  convenience.}
  \item{fitted}{ The fitted values of the PCLM model.}
- \item{ci}{ Confidence intervals around fitted values.}
+ \item{ci}{ A list with two kinds of interval and they are not
+interchangeable. \code{lower} and \code{upper} are the two mass-conserving
+scenarios: the distribution implied by a uniformly lower and a uniformly
+higher hazard, each rescaled so that it totals \code{sum(fitted)}. Because
+the total is held fixed, the low scenario moves deaths towards older ages
+and the two curves cross \code{fitted} in the tail. They are therefore
+scenarios, not pointwise bounds, and they carry no coverage level.
+\code{conf_lower} and \code{conf_upper} are the pointwise marginal
+\code{ci.level} interval for the fitted values, computed as
+\code{fitted * exp(-/+ qnorm * SE)}. These do satisfy
+\code{conf_lower <= fitted <= conf_upper} and they do not total
+\code{sum(fitted)}. Use the first pair as low and high inputs to a life
+table, the second as a pointwise error bar on the estimate.}
  \item{goodness.of.fit}{ A list containing goodness of fit measures: 
 standard errors, AIC and BIC.} 
- \item{smoothPar}{ Estimated smoothing parameters: \code{lambda, kr} 
-and \code{deg}.}
- \item{bins.definition}{ Additional values to identify the bins limits and 
+ \item{smoothPar}{ Estimated smoothing parameters. In the univariate model
+ a named vector of \code{lambda}, \code{kr} and \code{deg}. In the
+ two-dimensional model \code{lambda} splits into \code{lambda.x} for the
+ age axis and \code{lambda.y} for the year axis, so the vector is
+ \code{lambda.x, lambda.y, kr, deg}.}
+ \item{bin.definition}{ Additional values to identify the bins limits and
 location in input and output objects.}
  \item{deep}{ A list of objects created in the fitting process. Useful 
 in diagnosis of possible issues.}
@@ -110,8 +134,8 @@ plot(M1)
 # Example 2 ----------------------
 # ungroup even in smaller intervals
 M2 <- pclm(x, y, nlast, out.step = 0.5)
-head(fitted(M1))
-plot(M1, type = "s")
+head(fitted(M2))
+plot(M2, type = "s")
 # Note, in example 1 we are estimating intervals of length 1. In example 2 
 # we are estimating intervals of length 0.5 using the same aggregate data.
 
